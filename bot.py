@@ -1,11 +1,10 @@
 import os
 import asyncio
 import logging
-import google
 from typing import Optional
 
 import asyncpg
-from google import genai  # google generative ai client
+import google.generativeai as genai
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -62,21 +61,15 @@ async def init_db(pool):
     async with pool.acquire() as conn:
         await conn.execute(CREATE_USERS_TABLE)
 
-
-# ========== Gemini report generator ==========
 async def generate_report_text(reason: str) -> str:
+    prompt = f"""
+    You are a helper that generates a short, formal report message to appeal or report a WhatsApp account.
+    Output only the report text, nothing else.
+    Reason: {reason}
     """
-    Call Gemini 2.5 Flash to generate a report message for the given reason.
-    Return: generated text only.
-    """
-    prompt = (
-        "You are a helper that generates a short, formal report message to appeal or report a WhatsApp account.\n"
-        "You MUST ONLY output the report text (no extra commentary, no signatures, no 'As an AI' lines).\n"
-        f"Reason: {reason}\n"
-        "Include the necessary details for a WhatsApp report: what happened in 2-4 concise paragraphs,"
-        " include time, example messages (short), and a clear request for action (e.g., reinstate/ban/remove content).\n"
-        "Keep it professional and concise (max ~200-300 words)."
-    )
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    response = model.generate_content(prompt)
+    return response.text.strip()
 
     # Using genai client synchronous-like call (this client supports blocking calls; we wrap in executor)
     # NOTE: the client may be synchronous; run in thread to avoid blocking the event loop.
